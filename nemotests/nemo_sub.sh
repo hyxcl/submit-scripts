@@ -6,7 +6,7 @@
 #SBATCH --exclusive
 #SBATCH --job-name=general_sa:llama
 #SBATCH --mem=0
-#SBATCH --nodes=1
+#SBATCH --nodes=4
 #SBATCH --ntasks-per-node=8
 #SBATCH --time=0-04:00:00
 #SBATCH --partition=batch
@@ -19,19 +19,19 @@ export NVTE_ASYNC_AMAX_REDUCTION=1    # Enable asynchronous FP8 AMAX reduction
 export CUDA_DEVICE_MAX_CONNECTIONS=1 
 export HYDRA_FULL_ERROR=1
 export NVTE_FUSED_ATTN=0   #Disable cudnn FA until we've tested it more
-
-
-export MODEL="llama2_7b"
-export TP=2
-export PP=2
-export CP=2
-export SP=true  #true or false
-export SEQ_LENGTH=8192
-export MBS=2
-export GBS=16
 export DIR="/lustre/fsw/general_sa/vince/nemotests"
 export DATADIR="/lustre/fsw/general_sa/vince/data/llama"
-export FP8=true
+
+
+: "${MODEL:=llama2_13b}"
+: "${TP:=2}"
+: "${CP:=2}"
+: "${PP:=2}"
+: "${SP:=true}"
+: "${SEQ_LENGTH:=32768}"
+: "${MBS:=1}"
+: "${GBS:=64}"
+: "${FP8:=true}"
 
 mkdir -p ${DIR}/results/profile_logs
 mkdir -p ${DIR}/results/${MODEL}

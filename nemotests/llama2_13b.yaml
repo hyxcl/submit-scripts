@@ -53,6 +53,7 @@ model:
   rampup_batch_size: null
   tensor_model_parallel_size: 2
   pipeline_model_parallel_size: 4
+  context_parallel_size: 1
   virtual_pipeline_model_parallel_size: null
   encoder_seq_length: 4096
   max_position_embeddings: 4096
@@ -102,8 +103,8 @@ model:
   grad_allreduce_chunk_size_mb: 125
   grad_div_ar_fusion: true
   gradient_accumulation_fusion: true
-  bias_activation_fusion: false
-  bias_dropout_add_fusion: false
+  bias_activation_fusion: true
+  bias_dropout_add_fusion: true
   masked_softmax_fusion: true
   seed: 1234
   resume_from_checkpoint: null
@@ -128,6 +129,8 @@ model:
   fp8_amax_compute_algo: most_recent
   use_emha: false
   ub_tp_comm_overlap: false
+  overlap_p2p_comm: true
+  batch_p2p_comm: false
   tp_comm_atomic_ag: false
   tp_comm_atomic_rs: false
   use_flash_attention: true
@@ -152,6 +155,7 @@ model:
     overlap_grad_sync: true
     overlap_param_sync: true
     contiguous_grad_buffer: true
+    contiguous_param_buffer: true
     sched:
       name: CosineAnnealing
       warmup_steps: 107
