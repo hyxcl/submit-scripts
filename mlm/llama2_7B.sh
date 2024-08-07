@@ -82,10 +82,12 @@ EVAL_AND_LOGGING_ARGS=(
 )
 
 #python -u /lustre/fsw/coreai_dlalgo_llm/vince/Megatron-LM/pretrain_gpt.py \
-node=`echo $SLURM_JOB_NODELIST | sed 's/node\[//g'|awk -F '-' '{print $1}'|awk -F ',' '{print $1}'|sed 's/node//g'`
-export MASTER_ADDR=172.16.1.${node}
-export MASTER_PORT=6668
-export WORLD_SIZE=$(expr 8 \* $SLURM_JOB_NUM_NODES)
+##### bellow environment is no need in EOS, not sure why need to set it in customer's cluster.
+#node=`echo $SLURM_JOB_NODELIST | sed 's/node\[//g'|awk -F '-' '{print $1}'|awk -F ',' '{print $1}'|sed 's/node//g'`
+#export MASTER_ADDR=172.16.1.${node}
+#export MASTER_PORT=6668
+#export WORLD_SIZE=$(expr 8 \* $SLURM_JOB_NUM_NODES)
+
 #python -u /opt/megatron-lm/pretrain_gpt.py \
 nsys profile -s none -t nvtx,cuda -o /mnt/fs/nemofw/xucl/mlm/test --capture-range=cudaProfilerApi --capture-range-end=stop python -u /opt/megatron-lm/pretrain_gpt.py \
 	--profile \

@@ -82,10 +82,11 @@ EVAL_AND_LOGGING_ARGS=(
 )
 
 #python -u /lustre/fsw/coreai_dlalgo_llm/vince/Megatron-LM/pretrain_gpt.py \
-node=`echo $SLURM_JOB_NODELIST | sed 's/node\[//g'|awk -F '-' '{print $1}'`
-export MASTER_ADDR=172.16.1.${node}
-export MASTER_PORT=6668
-export WORLD_SIZE=$(expr 8 \* $SLURM_JOB_NUM_NODES)
+#### bellow environment is not needed in eos. not sure why need it in customer cluser.
+#node=`echo $SLURM_JOB_NODELIST | sed 's/node\[//g'|awk -F '-' '{print $1}'`
+#export MASTER_ADDR=172.16.1.${node}
+#export MASTER_PORT=6668
+#export WORLD_SIZE=$(expr 8 \* $SLURM_JOB_NUM_NODES)
 python -u /opt/megatron-lm/pretrain_gpt.py \
         ${MODEL_ARGS[@]} \
         ${PRECISION_ARGS[@]} \
