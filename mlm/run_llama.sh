@@ -19,6 +19,13 @@ export TRANSFORMERS_OFFLINE=1
 export TORCH_NCCL_AVOID_RECORD_STREAMS=1
 export NCCL_NVLS_ENABLE=0
 
+nodes=($(scontrol show hostnames "$SLURM_JOB_NODELIST"))
+master_node=${nodes[0]}
+master_addr=$(srun --nodes=1 --ntasks=1 -w "$master_node" hostname --ip-address)
+export MASTER_ADDR=$master_addr
+export MASTER_PORT=12345
+export WORLD_SIZE=$(expr 8 \* $SLURM_JOB_NUM_NODES)
+
 srun --container-image /image/nemofw.24.03.01.sqsh  \
 	--container-mounts /mnt/fs/nemofw/:/mnt/fs/nemofw/ \
 	--container-name megatron-lm-llama \
