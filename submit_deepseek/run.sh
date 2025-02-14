@@ -95,7 +95,7 @@ cat $TRAINING_PARAMS_PATH | envsubst >$TRAINING_PARAMS_PATH.tmp
 TRAINING_PARAMS_PATH=$TRAINING_PARAMS_PATH.tmp
 
 # Extract training params to export
-TRAINING_PARAMS_FROM_CONFIG=$(yq '... comments="" | .MODEL_ARGS | to_entries | .[] | select(.value != "false") | with(select(.value == "true"); .value = "") | [.key + " " + .value] | join("")' $TRAINING_PARAMS_PATH | tr '\n' ' ')
+TRAINING_PARAMS_FROM_CONFIG=$(yq '... comments="" | .MODEL_ARGS | to_entries | .[] | select(.value != "false") | with(select(.value == "true"); .value = "") | [.key + " " + .value] | join("")' $TRAINING_PARAMS_PATH | sed "s/(\([^)]*\))/'(\1)'/g" |tr '\n' ' ')
 export TRAINING_PARAMS="$TRAINING_PARAMS $TRAINING_PARAMS_FROM_CONFIG"
 
 MOUNTS="/lustre/:/lustre/"
@@ -116,7 +116,7 @@ fi
 export TRAINING_CMD="${PROFILE_CMD} python $TRAINING_SCRIPT_PATH $TRAINING_PARAMS"
 
 set +e
-sbatch <<EOF
+cat > ${MODEL}.sub <<EOF
 #!/bin/bash
 
 #SBATCH --nodes=$NODES
@@ -138,6 +138,8 @@ srun \
     --container-image=${IMAGE} \
     --container-mounts=${MOUNTS} \
     --container-workdir=${WORKSPACE} \
-    bash $TRAINING_CMD | tee "$SLURM_LOGS/\${SLURM_JOB_ID}.log" 
+    $TRAINING_CMD | tee "$SLURM_LOGS/\${SLURM_JOB_ID}.log" 
 EOF
+
+sbatch ${MODEL}.sub
 set -e
