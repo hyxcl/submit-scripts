@@ -91,7 +91,7 @@ export NCCL_DEBUG=INFO
 export MASTER_ADDR="127.0.0.1"   # set to the network address of one of the nodes you run. 
 export MASTER_PORT=12346 	
 export WORLD_SIZE=$(expr 8 \* $NODES)
-export HOSTS=${HOSTS:-"h20n4:8"}
+export HOSTS=${HOSTS:-"h20n4:1"}
 
 
 # SLURM settings
