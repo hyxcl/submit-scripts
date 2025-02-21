@@ -1,6 +1,8 @@
+## build the image according to the docker file
+
 ## start docker in each node
 ```
-docker run --gpus all -it --rm -v /path/in/host:/path/in/vm --device=/dev/infiniband --ipc=host --ulimit memlock=-1 --ulimit stack=67108864 --net host  nvcr.io/ea-bignlp/ga-participants/nemofw-training:24.05 bash 
+docker run --gpus all -it --rm -v /path/in/host:/path/in/vm --device=/dev/infiniband --ipc=host --ulimit memlock=-1 --ulimit stack=67108864 --net host  $dockerimage  bash 
 ```
 
 ## set up ssh
@@ -44,7 +46,8 @@ test the bellow command in container, make sure the mpirun is execuated correctl
 mpirun -np 8 -H h20n4:8,h20n5:8 hostname
 ```
 
-## run the nemo test.
+## run the test, the default is the DeepSeek-V3-singlenode-L20 for test, you need to modify the hostnames and other training parameters according to your environment.
+
 ```
-MODEL=llama2_70b_20L TP=8 CP=1 PP=1 MBS=2 GBS=16 TPOVERLAP=true bash  ./mpirun.sh
+MODEL=DeepSeek-V3 bash ./mpirun.sh
 ```
