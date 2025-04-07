@@ -11,8 +11,8 @@ MODEL_ARGS:
   --distributed-timeout-minutes: 60
   --tensor-model-parallel-size: ${TP}
   --pipeline-model-parallel-size: ${PP}
-  --decoder-first-pipeline-num-layers: ${PP_FIRST}
-  --decoder-last-pipeline-num-layers: ${PP_LAST}
+#  --decoder-first-pipeline-num-layers: ${PP_FIRST}
+#  --decoder-last-pipeline-num-layers: ${PP_LAST}
   --context-parallel-size: ${CP}
   --expert-model-parallel-size: ${EP}
   --use-distributed-optimizer: true
@@ -31,9 +31,9 @@ MODEL_ARGS:
   --no-bias-swiglu-fusion: true
   --no-check-for-nan-in-loss-and-grad: true
   --no-rope-fusion: true
-  --recompute-granularity: full
-  --recompute-method: uniform
-  --recompute-num-layers: 1
+  # --recompute-granularity: full
+  # --recompute-method: uniform
+  # --recompute-num-layers: 1
 
   # Transformer Engine args
   --transformer-impl: transformer_engine
@@ -50,7 +50,7 @@ MODEL_ARGS:
   --num-workers: 6
 
   # Add network size args
-  --num-layers: 7
+  --num-layers: 28
   --hidden-size: 7168
   --ffn-hidden-size: 18432
   --num-attention-heads: 128
@@ -83,18 +83,18 @@ MODEL_ARGS:
   --adam-beta2: 0.95
 
   # Add MoE args
-  --num-experts: 64
-  --moe-layer-freq: ([0]*1+[1]*6)
+  --num-experts: 256
+  --moe-layer-freq: ([0]*3+[1]*25)
   --moe-ffn-hidden-size: 2048
   --moe-shared-expert-intermediate-size: 2048
   --moe-router-load-balancing-type: seq_aux_loss
   --moe-router-topk: 8
   --moe-token-dispatcher-type: alltoall
   --moe-router-pre-softmax: true
-  --moe-grouped-gemm: true
+  --moe-grouped-gemm: ${MOE_GROUPED_GEMM}
   --moe-aux-loss-coeff: 1e-3
-  --moe-router-group-topk: 1
-  --moe-router-num-groups: 2
+  --moe-router-group-topk: 4
+  --moe-router-num-groups: 8
   --moe-shared-expert-overlap: true
   --moe-router-topk-scaling-factor: 2.5
   --moe-router-score-function: sigmoid
@@ -132,7 +132,7 @@ MODEL_ARGS:
   --log-interval: 1
   --tensorboard-dir: ${OUTPUT_PATH}/tensorboard
   --wandb-project: ${WANDB_PROJECT}
-  --wandb-exp-name: DeepSeek-V3-TP${TP}PP${PP}EP${EP}CP${CP}VPP${VPP}-MBS${MBS}GBS${GBS}-${COMMENT}
+  --wandb-exp-name: ${MODEL}-${COMMENT}
 
   # Add mixed precision args
   --bf16: true
