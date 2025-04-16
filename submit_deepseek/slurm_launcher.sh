@@ -172,5 +172,5 @@ srun \
     $TRAINING_CMD | tee "$SLURM_LOGS/\${SLURM_JOB_ID}_${COMMENT}.log" 
 EOF
 
-#sbatch ${MODEL}.sub
+sbatch ${MODEL}.sub
 set -e
