@@ -2,9 +2,9 @@
 set -euxo pipefail
 
 # Benchmarking configurations
-export MODEL=${MODEL:-"DeepSeek-V3-N4"}
+export MODEL=${MODEL:-"DeepSeek-V3"}
 MCORE_RELEASE_NUM=${MCORE_RELEASE_NUM:-"0.9"}
-WORKSPACE=${WORKSPACE:-"/lustre/raplab/client/congliangx/workspace/scripts/submit_deepseek"} # Path to the Launcher-Scripts
+WORKSPACE=${WORKSPACE:-"/lustre/raplab/client/congliangx/workspace/scripts/submit-scripts/submit_deepseek"} # Path to the Launcher-Scripts
 IMAGE=${IMAGE:-"/lustre/raplab/client/congliangx/workspace/images/ds-vince.sqsh"} # Path to sqsh or docker image url
 MEGATRON_PATH=${MEGATRON_PATH:-"/lustre/raplab/client/congliangx/workspace/scripts/Megatron-LM"} # Path to Megatron-LM
 
@@ -18,67 +18,30 @@ case $MODEL in
     DeepSeek-V3-N1 )
         export TP=${TP:-"1"} PP=${PP:-"1"} EP=${EP:-"8"} CP=${CP:-"1"} VPP=${VPP:-"1"} MBS=${MBS:-"1"} GBS=${GBS:-"512"} \
         SEQ_LEN=${SEQ_LEN:-"4096"} MOE_TOKEN_DISPATCHER=${MOE_TOKEN_DISPATCHER:-"alltoall"} MOE_GROUPED_GEMM=${MOE_GROUPED_GEMM:-"true"} \
-        PRETRAIN=${PRETRAIN:-"1"} NODES=${NODES:-"1"}
+        PRETRAIN=${PRETRAIN:-"1"} NODES=${NODES:-"1"} PP_FIRST=${PP_FIRST:-""} PP_LAST=${PP_LAST:-""}
         ;;
     DeepSeek-V3-N4 )
         export TP=${TP:-"1"} PP=${PP:-"2"} EP=${EP:-"16"} CP=${CP:-"1"} VPP=${VPP:-"1"} MBS=${MBS:-"1"} GBS=${GBS:-"512"} \
         SEQ_LEN=${SEQ_LEN:-"4096"} MOE_TOKEN_DISPATCHER=${MOE_TOKEN_DISPATCHER:-"alltoall"} MOE_GROUPED_GEMM=${MOE_GROUPED_GEMM:-"true"} \
-        PRETRAIN=${PRETRAIN:-"1"}  NODES=${NODES:-"4"}
+        PRETRAIN=${PRETRAIN:-"1"}  NODES=${NODES:-"4"} PP_FIRST=${PP_FIRST:-""} PP_LAST=${PP_LAST:-""}
         ;;
     DeepSeek-V3-N8 )
         export TP=${TP:-"1"} PP=${PP:-"2"} EP=${EP:-"32"} CP=${CP:-"1"} VPP=${VPP:-"1"} MBS=${MBS:-"1"} GBS=${GBS:-"512"} \
         SEQ_LEN=${SEQ_LEN:-"4096"} MOE_TOKEN_DISPATCHER=${MOE_TOKEN_DISPATCHER:-"alltoall"} MOE_GROUPED_GEMM=${MOE_GROUPED_GEMM:-"true"} \
-        PRETRAIN=${PRETRAIN:-"1"}  NODES=${NODES:-"8"}
+        PRETRAIN=${PRETRAIN:-"1"}  NODES=${NODES:-"8"} PP_FIRST=${PP_FIRST:-""} PP_LAST=${PP_LAST:-""}
         ;;    
     DeepSeek-V3-N16 )
         export TP=${TP:-"1"} PP=${PP:-"2"} EP=${EP:-"64"} CP=${CP:-"1"} VPP=${VPP:-"1"} MBS=${MBS:-"1"} GBS=${GBS:-"512"} \
         SEQ_LEN=${SEQ_LEN:-"4096"} MOE_TOKEN_DISPATCHER=${MOE_TOKEN_DISPATCHER:-"alltoall"} MOE_GROUPED_GEMM=${MOE_GROUPED_GEMM:-"true"} \
-        PRETRAIN=${PRETRAIN:-"1"}  NODES=${NODES:-"16"}
+        PRETRAIN=${PRETRAIN:-"1"}  NODES=${NODES:-"16"} PP_FIRST=${PP_FIRST:-""} PP_LAST=${PP_LAST:-""}
         ;;
 esac
 
 # Set training parameters, use all passed command line arguments if not pre-defined
 TRAINING_PARAMS=${TRAINING_PARAMS:-$@}
 
-# FP8 arguments
-PR=${PR:-fp8}
-if [ ${PR} = "bf16" ]; then
-    :
-elif [ ${PR} = "fp8" ]; then
-    TRAINING_PARAMS="$TRAINING_PARAMS --fp8-format hybrid --fp8-amax-history-len 1024 --fp8-amax-compute-algo max"
-    MOE_GROUPED_GEMM="true"
-else
-    echo "Error: The valid values for PR are 'bf16' or 'fp8'. Current value: ${PR}."
-    exit 1
-fi
-
-if [ $TP -gt 1 ]; then
-    export SP="true"
-else
-    export SP="false"
-fi
-
-export WANDB_API_KEY="${WANDB_API_KEY:-"fdfdd86c85adb270b7bd4f9f858dac5e61fe49ff"}"
-export WANDB_PROJECT=${WANDB_PEOJECT:-"DS"}
-export COMMENT=${COMMENT:-"mtp-qat6"}
-
-# Benchmarking paths
-TRAINING_SCRIPT_PATH="${MEGATRON_PATH}/pretrain_gpt.py"
-TRAINING_PARAMS_PATH="${WORKSPACE}/model_configs/${MODEL}.yaml"
-export DATA_PATH=${DATA_PATH:-"/lustre/raplab/client/congliangx/workspace/data/Slimpajama"}
-export OUTPUT_PATH="${WORKSPACE}/output/${MODEL}-${COMMENT}"
-
-
-
-cat $TRAINING_PARAMS_PATH | envsubst >${TRAINING_PARAMS_PATH}.tmp
-
-# Extract training params to export
-TRAINING_PARAMS_FROM_CONFIG=$(yq '... comments="" | .MODEL_ARGS | to_entries | .[] | select(.value != "false") | with(select(.value == "true"); .value = "") | [.key + " " + .value] | join("")' ${TRAINING_PARAMS_PATH}.tmp | sed "s/(\([^)]*\))/'(\1)'/g" |tr '\n' ' ')
-export TRAINING_PARAMS="$TRAINING_PARAMS $TRAINING_PARAMS_FROM_CONFIG"
-rm ${TRAINING_PARAMS_PATH}.tmp
 #profile
 PROFILE=${PROFILE:-0}
-
 if [ ${PROFILE} = 1 ]; then
     NSYS_PATH=${OUTPUT_PATH}/nsys
     DATETIME=$(date +'date_%y-%m-%d_time_%H-%M-%S')
@@ -89,7 +52,73 @@ else
     PROFILE_CMD=""
 fi
 
+#VPP and uneven PP
+if [ ${VPP} -gt 1 ]; then
+    TRAINING_PARAMS="$TRAINING_PARAMS --num-virtual-stages-per-pipeline-rank ${VPP}"
+fi
+
+if [[ ! -z ${PP_FIRST} && ! -z ${PP_LAST} ]]; then
+    TRAINING_PARAMS="$TRAINING_PARAMS --decoder-first-pipeline-num-layers ${PP_FIRST} --decoder-last-pipeline-num-layers ${PP_LAST}"
+fi
+
+# FP8 arguments
+PR=${PR:-fp8}
+if [ ${PR} = "bf16" ]; then
+    :
+elif [ ${PR} = "fp8" ]; then
+    TRAINING_PARAMS="$TRAINING_PARAMS --fp8-format hybrid --fp8-amax-history-len 1024 --fp8-amax-compute-algo max"
+    export MOE_GROUPED_GEMM="false"
+else
+    echo "Error: The valid values for PR are 'bf16' or 'fp8'. Current value: ${PR}."
+    exit 1
+fi
+
+#SP
+if [ $TP -gt 1 ]; then
+    export SP="true"
+else
+    export SP="false"
+fi
+
+
+#1F1B
+A2A_OVLP=${A2A_OVLP:-0}
+if [ ${A2A_OVLP} = "ep_a2a" ]; then
+    TRAINING_PARAMS="${TRAINING_PARAMS} --combined-1f1b --combined-1f1b-recipe ep_a2a"
+elif [ ${A2A_OVLP} = "golden" ]; then
+    TRAINING_PARAMS="${TRAINING_PARAMS} --combined-1f1b --combined-1f1b-recipe golden"
+fi
+
+SPLIT_BW=${SPLIT_BW:-0}
+if [ ${SPLIT_BW} = 1 ]; then
+    TRAINING_PARAMS="${TRAINING_PARAMS} --split-bw"
+fi
+
+#MTP
+MTP=${MTP:-0}
+if [ $MTP -gt 0 ]; then
+    TRAINING_PARAMS="${TRAINING_PARAMS} --mtp-num-layers $MTP"
+fi
+
+
+# Benchmarking paths
+export COMMENT=${COMMENT:-"mtp-qat6"}
+TRAINING_SCRIPT_PATH="${MEGATRON_PATH}/pretrain_gpt.py"
+TRAINING_PARAMS_PATH="${WORKSPACE}/model_configs/${MODEL}.yaml"
+export DATA_PATH=${DATA_PATH:-"/lustre/raplab/client/congliangx/workspace/data/Slimpajama"}
+export OUTPUT_PATH="${WORKSPACE}/output/${MODEL}-${COMMENT}"
+
+cat $TRAINING_PARAMS_PATH | envsubst >${TRAINING_PARAMS_PATH}.tmp
+
+# Extract training params to export
+TRAINING_PARAMS_FROM_CONFIG=$(yq '... comments="" | .MODEL_ARGS | to_entries | .[] | select(.value != "false") | with(select(.value == "true"); .value = "") | [.key + " " + .value] | join("")' ${TRAINING_PARAMS_PATH}.tmp | sed "s/(\([^)]*\))/'(\1)'/g" |tr '\n' ' ')
+export TRAINING_PARAMS="$TRAINING_PARAMS $TRAINING_PARAMS_FROM_CONFIG"
+rm ${TRAINING_PARAMS_PATH}.tmp
+
 export TRAINING_CMD="${PROFILE_CMD} python $TRAINING_SCRIPT_PATH $TRAINING_PARAMS"
+#wandb
+export WANDB_API_KEY="${WANDB_API_KEY:-"fdfdd86c85adb270b7bd4f9f858dac5e61fe49ff"}"
+export WANDB_PROJECT=${WANDB_PEOJECT:-"DS"}
 
 #Training environment
 export CUDA_DEVICE_MAX_CONNECTIONS=1
@@ -143,5 +172,5 @@ srun \
     $TRAINING_CMD | tee "$SLURM_LOGS/\${SLURM_JOB_ID}_${COMMENT}.log" 
 EOF
 
-sbatch ${MODEL}.sub
+#sbatch ${MODEL}.sub
 set -e

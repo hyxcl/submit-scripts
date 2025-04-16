@@ -21,7 +21,7 @@ MODEL_ARGS:
 
   # Training args
   --use-mcore-models: true
-  --sequence-parallel: true
+  --sequence-parallel: ${SP}
   --use-flash-attn: true
   --disable-bias-linear: true
   --micro-batch-size: ${MBS}
