@@ -117,7 +117,7 @@ rm ${TRAINING_PARAMS_PATH}.tmp
 
 export TRAINING_CMD="${PROFILE_CMD} python $TRAINING_SCRIPT_PATH $TRAINING_PARAMS"
 #wandb
-export WANDB_API_KEY="${WANDB_API_KEY:-"fdfdd86c85adb270b7bd4f9f858dac5e61fe49ff"}"
+export WANDB_API_KEY="${WANDB_API_KEY:-"your wandb key"}"
 export WANDB_PROJECT=${WANDB_PEOJECT:-"DS"}
 
 #Training environment
