@@ -1,0 +1,5 @@
+enable_attention_dp: false
+pytorch_backend_config:
+  enable_overlap_scheduler: true
+  use_cuda_graph: true
+  cuda_graph_max_batch_size: 256
