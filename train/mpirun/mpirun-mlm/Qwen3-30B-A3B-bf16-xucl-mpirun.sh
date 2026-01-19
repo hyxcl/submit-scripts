@@ -14,19 +14,15 @@ export NVTE_BWD_LAYERNORM_SM_MARGIN=0
 export NVTE_FUSED_ATTN=1
 export NVTE_DEBUG=0
 
-# nodes=($(scontrol show hostnames "$SLURM_JOB_NODELIST"))
-# master_node=${nodes[0]}
-# master_addr=$(srun --nodes=1 --ntasks=1 -w "$master_node" hostname --ip-address)
 export MASTER_ADDR=localhost
 export MASTER_PORT=12345
-# export WORLD_SIZE=$(expr 8 \* $SLURM_JOB_NUM_NODES)
 export TP_SIZE=1
 export PP_SIZE=1
 export EP_SIZE=4
 export MBS=2
 export GBS=256
 
-#--cpu-bind=cores,verbose 
+
 WRAPPER_SCRIPT=$(mktemp)
 cat > $WRAPPER_SCRIPT << 'EOFWRAPPER'
 #!/bin/bash
@@ -35,7 +31,6 @@ set -x
 export RANK=${OMPI_COMM_WORLD_RANK:-${PMI_RANK:-0}}
 export WORLD_SIZE=${OMPI_COMM_WORLD_SIZE:-${PMI_SIZE:-8}}
 export LOCAL_RANK=${OMPI_COMM_WORLD_LOCAL_RANK:-${PMI_LOCAL_RANK:-${RANK}}}
-# Run the actual training script with all arguments
 exec python -u "$@"
 EOFWRAPPER
 chmod +x $WRAPPER_SCRIPT
@@ -105,4 +100,4 @@ mpirun -np 8 --allow-run-as-root \
         --fp8-recipe blockwise \
         --fp8-format e4m3 \
         --fp8-param-gather \
-        2>&1 | tee -a ./logs/${NAME}_TP${TP_SIZE}PP${PP_SIZE}EP${EP_SIZE}MBS${MBS}GBS${GBS}-nccl.log
+        2>&1 | tee -a ./logs/TP${TP_SIZE}PP${PP_SIZE}EP${EP_SIZE}MBS${MBS}GBS${GBS}-nccl.log
